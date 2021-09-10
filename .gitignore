@@ -17,7 +17,5 @@ yarn-error.log
 _ide_helper.php
 .phpstorm.meta.php
 
-.docker/
-docker-compose.yml
 /public/app.js
 /public/app.css
