@@ -17,7 +17,8 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     zip \
     unzip \
-    supervisor
+    supervisor \
+    cron
 
 # Clear cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -36,6 +37,14 @@ RUN if [ ${INSTALL_XDEBUG} = true ]; then \
 
 RUN curl -O "https://getcomposer.org/download/2.1.6/composer.phar" && chmod a+x composer.phar && mv composer.phar /usr/bin/composer
 
+# Node 12 LTS + yarn classic
+RUN curl -sL https://deb.nodesource.com/setup_12.x | bash - \
+    && apt-get install -y nodejs \
+    && curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - \
+    && echo "deb https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list \
+    && apt-get update \
+    && apt-get install -y yarn
+
 # Create system user to run Composer and Artisan Commands
 RUN useradd -G www-data,root -u $uid -d /home/$user $user
 RUN mkdir -p /home/$user/.composer && \
@@ -43,13 +52,16 @@ RUN mkdir -p /home/$user/.composer && \
 
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
+# Create the log file to be able to run tail
+RUN echo "* * * * * root /usr/local/bin/php /var/www/artisan schedule:run >> /var/log/cron.log 2>&1" >> /etc/crontab
+RUN touch /var/log/cron.log
+
 # Set working directory
 WORKDIR /var/www
 USER root
 
 ENTRYPOINT ["/usr/bin/supervisord", "-n", "-c",  "/etc/supervisor/conf.d/supervisord.conf"]
-# ENTRYPOINT ["/usr/bin/supervisord", "-n", "-c",  "/etc/supervisor/supervisord.conf"]
-# ENTRYPOINT ["/usr/bin/supervisord"]
+
 
 
 
